@@ -25,7 +25,7 @@ const HAMMER_ANIM_DURATION_MS = 100; // Duration of one swing down or up
 
 const HIT_ZONE_HORIZONTAL_OFFSET = -20;
 
-const STRIKE_ZONE_WIDTH = 60; // How precise the hit needs to be
+const STRIKE_ZONE_WIDTH = 100; // Increased from 60 to make it easier to hit nails
 
 // Nail Constants
 const NAIL_WIDTH = 10;
@@ -36,9 +36,11 @@ const NAIL_HEAD_HEIGHT = 15;
 // Hammer head's vertical center will be at HAMMER_PIVOT_Y - HAMMER_HANDLE_THICKNESS / 2 when angle is 0
 const NAIL_Y_ALIGNMENT = HAMMER_PIVOT_Y - (HAMMER_HANDLE_THICKNESS / 2) - (NAIL_HEAD_HEIGHT / 2);
 const NAIL_SINK_SPEED = 5;
-const NAIL_INITIAL_SPEED = 5;
-const NAIL_MAX_SPEED = 20;
+const NAIL_INITIAL_SPEED = 3; // Reduced from 5 to make initial speed slower
+const NAIL_MAX_SPEED = 12; // Reduced from 20 to make maximum speed slower
 const SPEED_INCREMENT_INTERVAL = 5;
+const SPEED_FLUCTUATION_RANGE = 2; // How much the speed can vary up or down
+const SPEED_CHANGE_INTERVAL = 1000; // How often the speed changes (in ms)
 
 const NAIL_SPAWN_INTERVAL_MS = 1500;
 
@@ -76,6 +78,7 @@ export default function PressurePlateGame({ onGameUpdate }) {
   const [health, setHealth] = useState(MAX_MISSES);
   const [stressIndicationScore, setStressIndicationScore] = useState(0);
   const [currentNailSpeed, setCurrentNailSpeed] = useState(NAIL_INITIAL_SPEED);
+  const lastSpeedChangeTime = useRef(0);
   
   const nails = useRef([]);
   const lastNailSpawnTime = useRef(0);
@@ -122,63 +125,44 @@ export default function PressurePlateGame({ onGameUpdate }) {
       return;
     }
 
-    // Trigger hammer animation (downward strike)
-    if (!hammer.current.isAnimating) { // Only start animation if not already animating
-        hammer.current.isAnimating = true;
-        hammer.current.animationStartTime = performance.now();
-        hammer.current.direction = 1; // Downward
+    // Prevent multiple rapid presses
+    if (hammer.current.isAnimating) {
+      return;
     }
+
+    // Trigger hammer animation (downward strike)
+    hammer.current.isAnimating = true;
+    hammer.current.animationStartTime = performance.now();
+    hammer.current.direction = 1; // Downward
     
     // Calculate the hammer's head strike X position when horizontal
-    // This is HAMMER_PIVOT_X + HAMMER_HANDLE_LENGTH (where handle ends)
     const hammerStrikeX = HAMMER_PIVOT_X + HAMMER_HANDLE_LENGTH + HAMMER_HEAD_WIDTH / 2 + HIT_ZONE_HORIZONTAL_OFFSET;
+    const strikeZoneLeft = hammerStrikeX - STRIKE_ZONE_WIDTH / 2;
+    const strikeZoneRight = hammerStrikeX + STRIKE_ZONE_WIDTH / 2;
 
-    // Find the nail that is currently closest to the hammer and not yet hit
-    const targetNail = nails.current.find(nail => !nail.isHit && nail.x + NAIL_WIDTH > HAMMER_PIVOT_X); // Check if nail is roughly near hammer's area
+    // Find the nail that is currently within the strike zone
+    const targetNail = nails.current.find(nail => {
+      if (nail.isHit) return false;
+      const nailCenter = nail.x + NAIL_WIDTH / 2;
+      // Check if nail's center is within the strike zone
+      return nailCenter >= strikeZoneLeft && nailCenter <= strikeZoneRight;
+    });
 
     if (targetNail) {
-        // Check if the nail's current position is within the effective strike zone
-        const nailCenter = targetNail.x + NAIL_WIDTH / 2;
-
-        const isWithinStrikeZone = (
-            // The nail's center should be horizontally aligned with the hammer's head strike point
-            nailCenter > (hammerStrikeX - STRIKE_ZONE_WIDTH / 2) &&
-            nailCenter < (hammerStrikeX + STRIKE_ZONE_WIDTH / 2)
-        );
-
-        if (isWithinStrikeZone) {
-            // Successful Hit!
-            targetNail.isHit = true;
-            setSuccessfulHits(prev => {
-                const newHits = prev + 1;
-                if (newHits % SPEED_INCREMENT_INTERVAL === 0 && currentNailSpeed < NAIL_MAX_SPEED) {
-                    setCurrentNailSpeed(prevSpeed => prevSpeed + 1);
-                }
-                return newHits;
-            });
-        } else {
-            // Miss! Pressed outside the zone
-            setPressesOutOfZone(prev => prev + 1);
-            setHealth(prev => {
-                const newHealth = prev - 1;
-                if (newHealth <= 0) {
-                    endGame();
-                }
-                return newHealth;
-            });
+      // Successful Hit! (nail is in strike zone)
+      targetNail.isHit = true;
+      setSuccessfulHits(prev => {
+        const newHits = prev + 1;
+        if (newHits % SPEED_INCREMENT_INTERVAL === 0 && currentNailSpeed < NAIL_MAX_SPEED) {
+          setCurrentNailSpeed(prevSpeed => prevSpeed + 1);
         }
+        return newHits;
+      });
     } else {
-        // Pressed spacebar but no nail was in target area (early press / no nail)
-        setPressesOutOfZone(prev => prev + 1);
-        setHealth(prev => {
-            const newHealth = prev - 1;
-            if (newHealth <= 0) {
-                endGame();
-            }
-            return newHealth;
-        });
+      // Pressed spacebar but no nail was in strike zone
+      setPressesOutOfZone(prev => prev + 1);
     }
-  }, [isStarted, isGameOver, initializeGame, successfulHits, pressesOutOfZone, health, currentNailSpeed]);
+  }, [isStarted, isGameOver, initializeGame, currentNailSpeed]);
 
   // Game loop
   useEffect(() => {
@@ -193,36 +177,46 @@ export default function PressurePlateGame({ onGameUpdate }) {
         return;
       }
 
+      // Update speed with random fluctuation
+      if (timestamp - lastSpeedChangeTime.current > SPEED_CHANGE_INTERVAL) {
+        const fluctuation = (Math.random() * 2 - 1) * SPEED_FLUCTUATION_RANGE;
+        setCurrentNailSpeed(prevSpeed => {
+          const newSpeed = prevSpeed + fluctuation;
+          // Keep speed within bounds
+          return Math.max(NAIL_INITIAL_SPEED, Math.min(NAIL_MAX_SPEED, newSpeed));
+        });
+        lastSpeedChangeTime.current = timestamp;
+      }
+
       // Update hammer animation
       if (hammer.current.isAnimating) {
         const elapsed = timestamp - hammer.current.animationStartTime;
-        let progress = Math.min(1, elapsed / HAMMER_ANIM_DURATION_MS); // Progress from 0 to 1
+        let progress = Math.min(1, elapsed / HAMMER_ANIM_DURATION_MS);
 
-        if (hammer.current.direction === 1) { // Swinging down
+        if (hammer.current.direction === 1) {
           hammer.current.currentAngle = HAMMER_IDLE_ANGLE + (HAMMER_STRIKE_ANGLE - HAMMER_IDLE_ANGLE) * progress;
           if (progress >= 1) {
-            hammer.current.direction = -1; // Start swinging up
-            hammer.current.animationStartTime = timestamp; // Reset start time for upward swing
+            hammer.current.direction = -1;
+            hammer.current.animationStartTime = timestamp;
           }
-        } else if (hammer.current.direction === -1) { // Swinging up
+        } else if (hammer.current.direction === -1) {
           hammer.current.currentAngle = HAMMER_STRIKE_ANGLE + (HAMMER_IDLE_ANGLE - HAMMER_STRIKE_ANGLE) * progress;
           if (progress >= 1) {
-            hammer.current.isAnimating = false; // Animation finished
-            hammer.current.direction = 0; // Idle
-            hammer.current.currentAngle = HAMMER_IDLE_ANGLE; // Snap to idle angle
+            hammer.current.isAnimating = false;
+            hammer.current.direction = 0;
+            hammer.current.currentAngle = HAMMER_IDLE_ANGLE;
           }
         }
       }
 
-
       // Spawn new nails
       if (timestamp - lastNailSpawnTime.current > NAIL_SPAWN_INTERVAL_MS) {
         nails.current.push({
-          id: timestamp, // Unique ID
-          x: GAME_WIDTH, // Start from right edge
-          sunkDepth: 0, // How much it has sunk (for animation)
-          isHit: false, // Whether it has been successfully hit
-          passed: false, // Whether it has passed the hammer without being hit
+          id: timestamp,
+          x: GAME_WIDTH,
+          sunkDepth: 0,
+          isHit: false,
+          passed: false,
         });
         lastNailSpawnTime.current = timestamp;
       }
@@ -230,30 +224,35 @@ export default function PressurePlateGame({ onGameUpdate }) {
       // Update and filter nails
       nails.current = nails.current.filter(nail => {
         if (nail.isHit) {
-          nail.sunkDepth += NAIL_SINK_SPEED; // Sink faster
-          if (nail.sunkDepth >= NAIL_HEIGHT - NAIL_HEAD_HEIGHT + 5) { // Sunk fully (approx height)
-            return false; // Remove nail from array
+          nail.sunkDepth += NAIL_SINK_SPEED;
+          if (nail.sunkDepth >= NAIL_HEIGHT - NAIL_HEAD_HEIGHT + 5) {
+            return false;
           }
         } else {
-          nail.x -= currentNailSpeed; // Move nail horizontally
+          nail.x -= currentNailSpeed;
 
-          // Check if nail passed the hammer without being hit
-          // A nail has passed if its leading edge is past the hammer's strike X position
-          const hammerStrikeX = HAMMER_PIVOT_X + HAMMER_HANDLE_LENGTH + HAMMER_HEAD_WIDTH / 2 + HIT_ZONE_HORIZONTAL_OFFSET; // Calculate strike X for comparison
-          if (nail.x + NAIL_WIDTH < hammerStrikeX && !nail.passed) { // Adjusted to be just past hammer strike X
+          // Check if nail passed the strike zone without being hit
+          const hammerStrikeX = HAMMER_PIVOT_X + HAMMER_HANDLE_LENGTH + HAMMER_HEAD_WIDTH / 2 + HIT_ZONE_HORIZONTAL_OFFSET;
+          const strikeZoneLeft = hammerStrikeX - STRIKE_ZONE_WIDTH / 2;
+          const strikeZoneRight = hammerStrikeX + STRIKE_ZONE_WIDTH / 2;
+
+          // Register miss when nail's right edge passes the strike zone
+          if (nail.x + NAIL_WIDTH < strikeZoneLeft && !nail.passed) {
             nail.passed = true;
-            setMisses(prev => prev + 1); // Count as a miss
-            setHealth(prev => {
-              const newHealth = prev - 1;
-              if (newHealth <= 0) {
+            const newMisses = misses + 1;
+            const newHealth = health - 1;
+            
+            setMisses(newMisses);
+            setHealth(newHealth);
+            
+            if (newHealth <= 0) {
+              requestAnimationFrame(() => {
                 endGame();
-              }
-              return newHealth;
-            });
+              });
+            }
           }
-          // Remove nails that are fully off screen and not hit
           if (nail.x < -NAIL_WIDTH) {
-              return false;
+            return false;
           }
         }
         return true;
@@ -369,22 +368,35 @@ export default function PressurePlateGame({ onGameUpdate }) {
 
 
     const endGame = () => {
-      cancelAnimationFrame(animationFrameId.current);
-      setIsStarted(false);
-      setIsGameOver(true);
-      
-      const finalSIS = calculateSIS(successfulHits, misses, pressesOutOfZone, currentNailSpeed);
-      setStressIndicationScore(finalSIS);
+      // Cancel any ongoing animations first
+      if (animationFrameId.current) {
+        cancelAnimationFrame(animationFrameId.current);
+        animationFrameId.current = null;
+      }
 
-      if(onGameUpdate) {
-        onGameUpdate({
+      // Calculate final score before state updates
+      const finalSIS = calculateSIS(successfulHits, misses, pressesOutOfZone, currentNailSpeed);
+      
+      // Batch all state updates together
+      Promise.resolve().then(() => {
+        setIsStarted(false);
+        setIsGameOver(true);
+        setStressIndicationScore(finalSIS);
+
+        // Ensure game data is properly formatted before sending
+        const gameData = {
           stressScore: finalSIS,
           successfulHits,
           misses,
           pressesOutOfZone,
           gameEnded: true
-        });
-      }
+        };
+
+        // Send game update after state is settled
+        if (onGameUpdate) {
+          onGameUpdate(gameData);
+        }
+      });
     };
 
     animationFrameId.current = requestAnimationFrame(gameLoop);
@@ -444,7 +456,18 @@ export default function PressurePlateGame({ onGameUpdate }) {
         
         {isGameOver && (
             <button
-                onClick={() => navigate("/stressLevel")}
+                onClick={() => navigate("/stressLevel", {
+                    state: {
+                        source: 'game',
+                        finalStressScore: stressIndicationScore,
+                        gameStats: {
+                            successfulHits,
+                            misses,
+                            pressesOutOfZone,
+                            finalDifficulty: currentNailSpeed
+                        }
+                    }
+                })}
                 className="px-6 py-3 bg-purple-600 text-white font-bold rounded-lg hover:bg-purple-700 transition duration-300"
             >
                 Go to Stress Level Page
