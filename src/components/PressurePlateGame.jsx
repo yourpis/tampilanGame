@@ -272,18 +272,6 @@ export default function PressurePlateGame({ onGameUpdate }) {
       ctx.fillStyle = "#D2B48C"; // Light brown for workbench top
       ctx.fillRect(0, NAIL_Y_ALIGNMENT + NAIL_HEAD_HEIGHT + 5, GAME_WIDTH, GAME_HEIGHT - (NAIL_Y_ALIGNMENT + NAIL_HEAD_HEIGHT + 5)); // Adjusted workbench Y to align with nail base
 
-      // Draw Strike Zone (visual guide for player)
-      // Positioned where the hammer head lands
-      const hammerStrikeX = HAMMER_PIVOT_X + HAMMER_HANDLE_LENGTH + HAMMER_HEAD_WIDTH / 2 + HIT_ZONE_HORIZONTAL_OFFSET; // X where hammer head is at strike angle
-      const strikeZoneYCenter = NAIL_Y_ALIGNMENT + NAIL_HEAD_HEIGHT / 2; // Y center for strike zone
-
-      ctx.fillStyle = "rgba(255, 255, 0, 0.4)"; // Semi-transparent yellow
-      ctx.fillRect(hammerStrikeX - STRIKE_ZONE_WIDTH / 2, strikeZoneYCenter - NAIL_HEAD_HEIGHT / 2, STRIKE_ZONE_WIDTH, NAIL_HEAD_HEIGHT); // Align with nail head
-      ctx.strokeStyle = "orange"; // Add outline for clarity
-      ctx.lineWidth = 2;
-      ctx.strokeRect(hammerStrikeX - STRIKE_ZONE_WIDTH / 2, strikeZoneYCenter - NAIL_HEAD_HEIGHT / 2, STRIKE_ZONE_WIDTH, NAIL_HEAD_HEIGHT);
-      ctx.lineWidth = 1;
-
       // Draw Hammer
       drawHammer(ctx, hammer.current.currentAngle);
 
