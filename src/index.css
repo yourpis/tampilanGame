@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+.home {
+    font-family: 'Inter', serif;
+}
+
+.open-sans {
+    font-family: 'Open Sans', 'serif';
+}
+
+.bg-home {
+    @apply bg-[url(/images/bg-home.png)] bg-no-repeat bg-top bg-cover bg-fixed min-h-[100vh];
+}
+/* 
+.bg-game {
+    @apply bg-[url(/images/bg-home.png)] bg-no-repeat bg-top bg-cover bg-fixed min-h-[100];
+} */
