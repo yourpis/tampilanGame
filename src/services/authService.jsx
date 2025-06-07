@@ -15,12 +15,10 @@ import {
   deleteDoc
 } from "firebase/firestore";
 
-// Register & Save Profile
 export const registerUser = async ({ email, password, displayName }) => {
   try {
     const res = await createUserWithEmailAndPassword(auth, email, password);
 
-    // Simpan ke Firestore
     await setDoc(doc(db, "users", res.user.uid), {
       email: res.user.email,
       displayName: displayName,
@@ -33,7 +31,6 @@ export const registerUser = async ({ email, password, displayName }) => {
   }
 };
 
-// Login 
 export const loginUser = async (email, password) => {
   try {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -54,25 +51,14 @@ export const getCurrentUserProfile = () => {
   }
   return null;
 };
-// Get Current User Profile
-// export const getCurrentUserProfile = async () => {
-//   const user = auth.currentUser;
-//   if (!user) return null;
 
-//   const userDoc = await getDoc(doc(db, "users", user.uid));
-//   return userDoc.exists() ? userDoc.data() : null;
-// };
-
-// Update Profile
 export const updateUserProfile = async ({ displayName }) => {
   try {
     const user = auth.currentUser;
     if (!user) return { success: false, error: "No user logged in" };
 
-    // Update Firebase Auth
     await updateProfile(user, { displayName });
 
-    // Update Firestore
     await updateDoc(doc(db, "users", user.uid), { displayName });
 
     return { success: true };
@@ -92,15 +78,13 @@ export const changeUserPassword = async (newPassword) => {
   }
 };
 
-// Delete Account
 export const deleteAccount = async () => {
   try {
     const user = auth.currentUser;
     if (!user) return { success: false, error: "No user logged in" };
 
-    // Hapus dari Firestore dulu
     await deleteDoc(doc(db, "users", user.uid));
-    // Hapus akun dari Firebase Auth
+
     await deleteUser(user);
 
     return { success: true };

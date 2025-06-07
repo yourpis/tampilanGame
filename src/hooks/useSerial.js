@@ -7,7 +7,7 @@ const useSerial = (onData) => {
 
     const connectSerial = async () => {
       try {
-        port = await navigator.serial.requestPort(); // hanya dipanggil saat benar2 ingin connect
+        port = await navigator.serial.requestPort();
         await port.open({ baudRate: 9600 });
 
         const decoder = new TextDecoderStream();
@@ -24,7 +24,6 @@ const useSerial = (onData) => {
       }
     };
 
-    // HANYA connect saat user klik tombol Connect, bukan otomatis!
     const button = document.getElementById("connectSerial");
     if (button) {
       button.addEventListener("click", connectSerial);

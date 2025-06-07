@@ -1,18 +1,15 @@
-// src/pages/StressLevel.jsx
 import { useEffect, useState } from "react";
-import { useLocation } from "react-router-dom"; // Import useLocation hook
+import { useLocation } from "react-router-dom";
 import useSerial from "../hooks/useSerial";
 
-// Configuration for stress levels (BPM based, but also used for SIS mapping)
 const STRESS_LEVELS = [
-  { icon: "/images/emote.png", label: "Chill Mode", color: "#4CAF50" }, // Green
-  { icon: "/images/emote.png", label: "Warm-Up", color: "#FFEB3B" },   // Yellow
-  { icon: "/images/emote.png", label: "Focused", color: "#FFC107" },   // Amber
-  { icon: "/images/emote.png", label: "Overdrive", color: "#FF9800" }, // Orange
-  { icon: "/images/emote.png", label: "Meltdown", color: "#F44336" }, // Red
+  { icon: "/images/emote.png", label: "Chill Mode", color: "#4CAF50" },
+  { icon: "/images/emote.png", label: "Warm-Up", color: "#FFEB3B" },
+  { icon: "/images/emote.png", label: "Focused", color: "#FFC107" },
+  { icon: "/images/emote.png", label: "Overdrive", color: "#FF9800" },
+  { icon: "/images/emote.png", label: "Meltdown", color: "#F44336" },
 ];
 
-// Define SIS thresholds for mapping to stress levels (from PressurePlateGame's calculateSIS logic)
 const SIS_THRESHOLDS = {
   chill: 50,
   warmUp: 150,
@@ -20,15 +17,13 @@ const SIS_THRESHOLDS = {
   overdrive: 500,
 };
 
-
 const StressLevel = () => {
-  const location = useLocation(); // Initialize useLocation hook
+  const location = useLocation();
 
   const [levelIdx, setLevelIdx] = useState(0);
   const [bpm, setBpm] = useState(0);
   const [stressBallScore, setStressBallScore] = useState(0);
 
-  // New state to hold game results
   const [gameStressResult, setGameStressResult] = useState(null); 
 
   useEffect(() => {
@@ -38,31 +33,24 @@ const StressLevel = () => {
     };
   }, []);
 
-  // Effect to check for game stress results from navigation state
   useEffect(() => {
     if (location.state && location.state.source === 'game') {
       const { finalStressScore, gameStats } = location.state;
       setGameStressResult({ finalStressScore, gameStats });
 
-      // Map game's SIS to stress level display
       if (finalStressScore < SIS_THRESHOLDS.chill) setLevelIdx(0);
       else if (finalStressScore < SIS_THRESHOLDS.warmUp) setLevelIdx(1);
       else if (finalStressScore < SIS_THRESHOLDS.focused) setLevelIdx(2);
       else if (finalStressScore < SIS_THRESHOLDS.overdrive) setLevelIdx(3);
       else setLevelIdx(4);
 
-      // Clear the state from location after processing to prevent re-display on refresh/re-navigate
-      // This is crucial to avoid displaying old game results if user just navigates back.
-      window.history.replaceState({}, document.title); // Clears the state from history
+      window.history.replaceState({}, document.title);
     } else {
-      setGameStressResult(null); // Clear previous game results if navigating normally
+      setGameStressResult(null);
     }
-  }, [location.state]); // Re-run when location state changes
+  }, [location.state]);
 
-  // Handler for data coming from the serial port (BPM)
-  // This will primarily be active when there are no game results to show
   useSerial((data) => {
-    // Only process BPM if no game results are being displayed
     if (gameStressResult) return; 
 
     const val = parseInt(data);
@@ -95,7 +83,7 @@ const StressLevel = () => {
       <div className="flex flex-col items-center justify-center flex-1 pt-20 pb-10">
         <h1 className="text-white text-4xl font-bold mb-6 drop-shadow-lg">Stress Level Monitor</h1>
 
-        {!gameStressResult && ( // Only show connect button if no game results are active
+        {!gameStressResult && (
           <button
             id="connectSerial"
             className="mb-6 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition"
@@ -107,7 +95,6 @@ const StressLevel = () => {
         {/* Info Card */}
         <div className="bg-white bg-opacity-90 rounded-2xl shadow-xl px-10 py-8 flex flex-col items-center w-[350px] max-w-full">
           {gameStressResult ? (
-            // Display Game Stress Results
             <>
               <h2 className="text-2xl font-bold text-blue-900 mb-4">Game Stress Report</h2>
               <div className="flex w-full justify-between items-center mb-4">
@@ -137,7 +124,6 @@ const StressLevel = () => {
                <p className="text-sm text-gray-500 mt-4">Game Difficulty: {gameStressResult.gameStats.finalDifficulty}</p>
             </>
           ) : (
-            // Display BPM from Serial Device
             <>
               <div className="flex w-full justify-between items-center mb-4">
                 <div className="flex flex-col items-center">

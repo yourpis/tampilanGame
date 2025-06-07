@@ -1,10 +1,7 @@
-// src/pages/GamePage.jsx
-import { useEffect } from "react"; // useState for lastGameResult removed
+import { useEffect } from "react";
 import PressurePlateGame from "../components/PressurePlateGame";
 
 const GamePage = () => {
-    // Removed: const [lastGameResult, setLastGameResult] = useState(null);
-
     useEffect(() => {
         document.body.classList.add('bg-home');
         return () => {
@@ -12,12 +9,9 @@ const GamePage = () => {
         };
     }, []);
 
-    // The handleGameData callback will still be useful if you want to log data
-    // or send it to a backend, even if not displayed on this page.
     const handleGameData = (data) => {
         if (data.gameEnded) {
             console.log("Game Ended! Final Stress Score:", data.stressScore);
-            // You could send this data to an API here if you had one
         }
     };
 

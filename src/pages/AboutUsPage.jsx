@@ -1,4 +1,3 @@
-// src/pages/AboutUsPage.jsx
 import React, { useEffect } from 'react';
 
 const AboutUsPage = () => {
@@ -10,8 +9,6 @@ const AboutUsPage = () => {
     }, []);
 
     return (
-        // Added a new div as a container for the entire page content, 
-        // adjusting padding and margin for proper display.
         <div className="py-20"> {/* Adjust py-20 as needed to create space below Navbar */}
             {/* The content that was previously on HomePage.jsx */}
             <div className="w-full px-32 max-[1700px]:px-16 max-[480px]:px-5 max-[780px]:px-8 relative"> {/* Removed -mt-10 as it's not needed here */}

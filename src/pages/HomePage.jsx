@@ -1,4 +1,3 @@
-// src/pages/HomePage.jsx
 import Button from "../components/Button"
 import { useEffect } from "react";
 

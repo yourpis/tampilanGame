@@ -5,7 +5,7 @@ const HomePage = lazy(() => import ("./pages/HomePage.jsx"));
 const GamePage = lazy(() => import ("./pages/GamePage.jsx"));
 const Layout = lazy(() => import ("./components/Layout.jsx"));
 const StressLevel = lazy(() => import ("./pages/StressLevel.jsx"));
-const AboutUsPage = lazy(() => import ("./pages/AboutUsPage.jsx")); // <--- New Import
+const AboutUsPage = lazy(() => import ("./pages/AboutUsPage.jsx"));
 
 
 const Router = () => {
